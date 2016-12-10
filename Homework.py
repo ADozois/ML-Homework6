@@ -34,19 +34,24 @@ def loadDataset(split, X=[], XT=[], Z=[], ZT=[]):
 
 
 def pred(X, W, b):
-    value = X * W + b
+    value = np.dot(X, W[0]) + b
     return 1 / (1 + math.exp(-value))
 
 
 def loglikelihood(X, Z, W, b):
-    sum = 0.0
-    error = 0.0
-    for i in range(0, X.shape[0]):
-        # ToDo: Find how to add the bias
-        sum += Z[i] * math.log1p(pred(W[i], X[i], b)) + (1 - Z[i]) * math.log1p(1 - pred(W[i], X[i], b))
-    sum *= (-1)
-    return np.empty_like(Z)
+    sum = np.zeros(Z.shape[0])
+    for i in range(0, Z.shape[0]):
+        sum += Z[i] * math.log1p(pred(X[i, :], W, b)) + (1 - Z[i]) * math.log1p(pred(X[i, :], W, b))
+    return sum
 
+
+def grad(X, Z, W, b):
+    gradW = np.zeros((1,2))
+    gradB = np.zeros(1)
+    for i in range(0, Z.shape[0]):
+        gradW += np.dot((pred(X[i], W, b)-Z[i]),X[i, :])
+        gradB += np.dot((pred(X[i], W, b) - Z[i]),1)
+    return gradW, gradB
 
 if __name__ == "__main__":
     # prepare data
@@ -60,3 +65,22 @@ if __name__ == "__main__":
     # only look at 2 dimensions of the input data for easy visualisation
     X = X[:, :2]
     XT = XT[:, :2]
+    W = np.random.randn(1, 2) * 0.01
+    b = np.random.randn(1) * 0.01
+
+    learning_rate = 0.001
+    train_loss = []
+    validation_loss = []
+
+    for i in range(10000):
+        dLdW, dLdb = grad(X, Z, W, b)
+
+        W -= learning_rate * dLdW
+        b -= learning_rate * dLdb
+        train_loss.append(- loglikelihood(X, Z, W, b).mean())
+
+    _ = plt.plot(train_loss)
+
+    plot_decision_boundary(X, Z, W=W, b=b)
+
+    plot_decision_boundary(XT, ZT, W=W, b=b)
